@@ -58,7 +58,7 @@ export default function RequiresConfirmationController({
 
   useEffect(() => {
     if (!requiresConfirmation) {
-      formMethods.setValue("metadata.requiresConfirmationThreshold", undefined, { shouldDirty: true });
+      formMethods.setValue("metadata.requiresConfirmationThreshold", undefined, { shouldDirty: false });
     }
   }, [requiresConfirmation]);
 
