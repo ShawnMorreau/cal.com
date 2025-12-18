@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { getStripeCustomerIdFromUserId } from "@calcom/app-store/stripepayment/lib/customer";
 import { getDubCustomer } from "@calcom/features/auth/lib/dub";
-import stripe from "@calcom/features/ee/payments/server/stripe";
+import getStripe from "@calcom/features/ee/payments/server/stripe";
 import { CHECKOUT_SESSION_TYPES } from "@calcom/features/ee/billing/constants";
 import {
   IS_PRODUCTION,
@@ -36,7 +36,7 @@ export const checkIfTeamPaymentRequired = async ({ teamId = -1 }) => {
   const metadata = teamMetadataSchema.parse(team.metadata);
   /** If there's no paymentId, we need to pay this team */
   if (!metadata?.paymentId) return { url: null };
-  const checkoutSession = await stripe.checkout.sessions.retrieve(metadata.paymentId);
+  const checkoutSession = await getStripe().checkout.sessions.retrieve(metadata.paymentId);
   /** If there's a pending session but it isn't paid, we need to pay this team */
   if (checkoutSession.payment_status !== "paid") return { url: null };
   /** If the session is already paid we return the upgrade URL so team is updated. */
@@ -63,7 +63,7 @@ export const generateTeamCheckoutSession = async ({
     getStripeCustomerIdFromUserId(userId),
     getDubCustomer(userId.toString()),
   ]);
-  const session = await stripe.checkout.sessions.create({
+  const session = await getStripe().checkout.sessions.create({
     customer,
     mode: "subscription",
     ...(dubCustomer?.discount?.couponId
@@ -177,7 +177,7 @@ export const purchaseTeamOrOrgSubscription = async (input: {
     priceId = fixedPrice as string;
   }
 
-  const session = await stripe.checkout.sessions.create({
+  const session = await getStripe().checkout.sessions.create({
     customer,
     mode: "subscription",
     allow_promotion_codes: true,
@@ -211,7 +211,7 @@ export const purchaseTeamOrOrgSubscription = async (input: {
   });
   return { url: session.url };
 
-  async function createPrice({
+ async function createPrice({
     isOrg,
     teamId,
     pricePerSeat,
@@ -223,7 +223,7 @@ export const purchaseTeamOrOrgSubscription = async (input: {
     teamId: number;
     pricePerSeat: number;
     billingPeriod: BillingPeriod;
-    product: Stripe.Product | string;
+    product: Stripe.Product | string; // <--- FIXED: Use "Stripe.Product", not "stripe().Product"
     currency: string;
   }) {
     try {
@@ -232,7 +232,7 @@ export const purchaseTeamOrOrgSubscription = async (input: {
       const occurrence = billingPeriod === "MONTHLY" ? 1 : 12;
       const yearlyPrice = pricePerSeatInCents * occurrence;
 
-      const customPriceObj = await stripe.prices.create({
+      const customPriceObj = await getStripe().prices.create({
         nickname: `Custom price for ${isOrg ? "Organization" : "Team"} ID: ${teamId}`,
         unit_amount: yearlyPrice, // Stripe expects the amount in cents
         // Use the same currency as in the fixed price to avoid hardcoding it.
@@ -251,7 +251,6 @@ export const purchaseTeamOrOrgSubscription = async (input: {
       throw new Error("Error in creation of custom price");
     }
   }
-
   /**
    * Determines the priceId depending on if a custom price is required or not.
    * If the organization has a custom price per seat, it will create a new price in stripe and return its ID.
@@ -274,7 +273,7 @@ export const purchaseTeamOrOrgSubscription = async (input: {
 };
 
 async function getPriceObject(priceId: string) {
-  const priceObj = await stripe.prices.retrieve(priceId);
+  const priceObj = await getStripe().prices.retrieve(priceId);
   if (!priceObj) throw new Error(`No price found for ID ${priceId}`);
 
   return priceObj;
@@ -301,13 +300,13 @@ export const updateQuantitySubscriptionFromStripe = async (teamId: number) => {
     const team = await getTeamWithPaymentMetadata(teamId);
     const { subscriptionId, subscriptionItemId } = team.metadata;
     const membershipCount = team.members.length;
-    const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    const subscription = await getStripe().subscriptions.retrieve(subscriptionId);
     const subscriptionQuantity = subscription.items.data.find(
       (sub) => sub.id === subscriptionItemId
     )?.quantity;
     if (!subscriptionQuantity) throw new Error("Subscription not found");
 
-    await stripe.subscriptions.update(subscriptionId, {
+    await getStripe().subscriptions.update(subscriptionId, {
       items: [{ quantity: membershipCount, id: subscriptionItemId }],
     });
     console.info(

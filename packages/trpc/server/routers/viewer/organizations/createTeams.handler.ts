@@ -1,6 +1,6 @@
 import { getOrgFullOrigin } from "@calcom/ee/organizations/lib/orgDomains";
 import { CreditService } from "@calcom/features/ee/billing/credit-service";
-import stripe from "@calcom/features/ee/payments/server/stripe";
+import getStripe from "@calcom/features/ee/payments/server/stripe";
 import { PermissionCheckService } from "@calcom/features/pbac/services/permission-check.service";
 import { UserRepository } from "@calcom/features/users/repositories/UserRepository";
 import logger from "@calcom/lib/logger";
@@ -288,7 +288,7 @@ async function moveTeam({
 async function tryToCancelSubscription(subscriptionId: string) {
   try {
     log.debug("Canceling stripe subscription", safeStringify({ subscriptionId }));
-    return await stripe.subscriptions.cancel(subscriptionId);
+    return await getStripe().subscriptions.cancel(subscriptionId);
   } catch (error) {
     log.error("Error while cancelling stripe subscription", error);
   }

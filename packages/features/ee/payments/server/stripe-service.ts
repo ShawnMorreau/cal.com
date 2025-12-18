@@ -14,7 +14,7 @@ export class StripeService {
     let hasPaymentFailed = false;
     if (checkoutSessionId) {
       try {
-        const session = await stripe.checkout.sessions.retrieve(checkoutSessionId);
+        const session = await stripe().checkout.sessions.retrieve(checkoutSessionId);
         if (typeof session.customer !== "string") {
           return {
             valid: false,
@@ -23,18 +23,18 @@ export class StripeService {
         customerId = session.customer;
         isPremiumUsername = true;
         hasPaymentFailed = session.payment_status !== "paid";
-      } catch (e) {
+      } catch {
         return {
           valid: false,
         };
       }
     } else {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+       
       customerId = stripeCustomerId!;
     }
 
     try {
-      const customer = await stripe.customers.retrieve(customerId);
+      const customer = await stripe().customers.retrieve(customerId);
       if (customer.deleted) {
         return {
           valid: false,
@@ -51,7 +51,7 @@ export class StripeService {
           stripeCustomerId: customerId,
         },
       };
-    } catch (e) {
+    } catch {
       return {
         valid: false,
       };
