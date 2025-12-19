@@ -223,7 +223,7 @@ export const purchaseTeamOrOrgSubscription = async (input: {
     teamId: number;
     pricePerSeat: number;
     billingPeriod: BillingPeriod;
-    product: Stripe.Product | string; // <--- FIXED: Use "Stripe.Product", not "stripe().Product"
+    product: Stripe.Product | string;
     currency: string;
   }) {
     try {
